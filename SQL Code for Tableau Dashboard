@@ -1,0 +1,61 @@
+/*
+Objectives
+Come up with flu shots dashboard for 2022 that does the following
+
+1.) Total % of patients getting flu shots stratified by
+   a.) Age
+   b.) Race
+   c.) County (On a Map)
+   d.) Overall
+2.) Running Total of Flu Shots over the course of 2022
+3.) Total number of Flu shots given in 2022
+4.) A list of Patients that show whether or not they received the flu shots
+   
+Requirements:
+
+Patients must have been "Active at our hospital"
+*/
+
+
+WITH active_patients AS 
+(
+SELECT distinct patient
+FROM encounters
+LEFT JOIN patients
+ON encounters.patient = patients.id
+WHERE encounters.start BETWEEN '2020-01-01 00:00' AND '2022-12-31 23:59'
+AND patients.deathdate IS NULL
+AND EXTRACT (MONTH FROM age('2022-12-31 23:59', patients.birthdate)) >= 6
+),
+
+flu_shot_2022 AS
+(
+SELECT patient, min(date) AS earliest_flu_shot_2022
+FROM immunizations
+WHERE code = '5302'
+AND date BETWEEN '2022-01-01 00:00' AND '2022-12-31 23:59'
+GROUP BY patient
+)
+
+SELECT 
+	patients.birthdate, 
+	patients.race, 
+	patients.county, 
+	patients.id, 
+	patients.first, 
+	patients.last,
+	patients.gender,
+	patients.zip,
+	EXTRACT(YEAR FROM age('12-31-2022', birthdate)) as age,
+	flu_shot_2022.earliest_flu_shot_2022,
+	CASE WHEN flu_shot_2022.patient IS NOT NULL THEN 1
+	ELSE 0
+	END AS flu_shot_received_2022
+FROM patients
+LEFT JOIN flu_shot_2022
+ON patients.id = flu_shot_2022.patient
+WHERE 1=1
+AND patients.id IN (SELECT patient FROM active_patients)
+
+
+
